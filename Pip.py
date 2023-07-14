@@ -27,8 +27,7 @@ def run(context):
             except ImportError:
                 import pip
                 pip.main(['install', package])
-            finally:
-                globals()[package] = importlib.import_module(package)
+           
         app = adsk.core.Application.get()
         ui = app.userInterface
         install_and_import(pip_name)
