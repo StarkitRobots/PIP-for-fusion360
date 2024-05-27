@@ -1,39 +1,45 @@
-# Author-Jerome Briot
-# Contact-jbtechlab@gmail.com
-# Description-Install scripts or add-ins from GitHub
-
-import adsk
-import adsk.core
-import adsk.fusion
-import traceback
-
-import sys
+import platform
 import os
-packagepath = os.path.join(os.path.dirname(sys.argv[0]), 'Lib/site-packages/')
-if packagepath not in sys.path:
-    sys.path.append(packagepath)
+from pathlib import Path
+import subprocess
+import adsk.core, traceback  # pylint: disable=import-error
+import sys
+def install_package(package_name):
+    print(f"Installing {package_name}...")
+    try:
+        python_path = str(Path(os.__file__).parents[1] / 'python.exe')
+    except:
+        python_path = sys.executable
+    try:
+        import pip
+    except ImportError:
+        get_pip_filepath = os.path.join(os.path.dirname(__file__), 'get-pip.py')
+        subprocess.check_call([python_path, get_pip_filepath])
 
+    try:
+        subprocess.check_call([python_path, '-m', 'pip', 'install', package_name])
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to install {package_name}: {e}")
+        raise
 
 def run(context):
-    app = adsk.core.Application.get()
-    ui = app.userInterface
-    (pip_name, cancelled) = ui.inputBox(
-        'Enter the PIP library to import in Fusion 360', 'Install')
+    ui = None
     try:
-        def install_and_import(package):
-            import importlib
-            try:
-                importlib.import_module(package)
-            except ImportError:
-                import pip
-                pip.main(['install', package])
-           
         app = adsk.core.Application.get()
         ui = app.userInterface
-        install_and_import(pip_name)
-        ui.messageBox(pip_name, pip_name)
 
-    except:
+        lib_url, cancelled = ui.inputBox('Enter the name of the Python library to import in Fusion 360', 'PipToFusion360')
+        if cancelled:
+            ui.messageBox('Process aborted', 'PipToFusion360', adsk.core.MessageBoxButtonTypes.OKButtonType, adsk.core.MessageBoxIconTypes.CriticalIconType)
+            return
+
+        install_package(lib_url)
+
+        if ui:
+            ui.messageBox('Install successful')
+    except adsk.AbortError:
+        pass  # User aborted, do nothing
+    except Exception as ex:
         if ui:
             ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
-   
+
